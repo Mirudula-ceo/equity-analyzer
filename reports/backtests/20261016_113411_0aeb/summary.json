@@ -1,0 +1,105 @@
+{
+  "run_id": "20261016_113411_0aeb",
+  "strategy": "momentum",
+  "label": "Price momentum 12-1 (partial: price data only)",
+  "is_full_27_metric_backtest": false,
+  "universe": "NIFTY50 current constituents (50 symbols; 0 without price data)",
+  "missing_symbols": [],
+  "params": {
+    "initial_capital": 500000,
+    "start_date": "2016-01-01",
+    "end_date": "",
+    "rebalance_frequency": "Q",
+    "max_stocks": 10,
+    "weighting": "equal",
+    "tolerance": 0.02,
+    "execution": "next_open",
+    "risk_free_rate": 0.065,
+    "momentum_lookback_months": 12,
+    "momentum_skip_months": 1,
+    "min_price_history_days": 260,
+    "start_used": "2016-01-01"
+  },
+  "first_trade": "2017-01-02",
+  "benchmark": "NIFTYBEES.NS adjusted close (Nifty 50 ETF, dividends reinvested, after ETF fees)",
+  "report": {
+    "portfolio": {
+      "start": "2016-12-30",
+      "end": "2026-10-16",
+      "years": 9.793292265571527,
+      "start_value": 500000.0,
+      "end_value": 4180084.187568293,
+      "total_return": 7.3601683751365865,
+      "cagr": 0.24213279545587585,
+      "volatility": 0.21662918793869207,
+      "sharpe": 0.8408202607223304,
+      "sortino": 1.158145841026398,
+      "max_drawdown": -0.4435857631082808,
+      "max_drawdown_date": "2020-03-23"
+    },
+    "trades": {
+      "completed_sells": 180,
+      "full_exits": 146,
+      "win_rate": 0.6888888888888889,
+      "avg_gain_pct": 0.7873639717023081,
+      "avg_loss_pct": -0.11235751790101585,
+      "realized_pnl": 3256771.087951812
+    },
+    "turnover": 1.444310543727037,
+    "costs": {
+      "charges_total": 65067.23147157446,
+      "slippage_total": 55933.09045289678,
+      "cost_brokerage": 0.0,
+      "cost_stt": 55933.63350180765,
+      "cost_exchange": 1661.2289150036872,
+      "cost_sebi": 55.93363350180765,
+      "cost_stamp": 4239.946162530325,
+      "cost_gst": 309.08925873098906,
+      "cost_dp": 2867.4000000000005,
+      "cost_basis": 24379017.661359392
+    },
+    "dividends_received": 220124.130222,
+    "pnl": {
+      "realized": 3256771.087951812,
+      "unrealized": 203188.96939448212,
+      "dividends": 220124.130222,
+      "total_change": 3680084.187568293
+    },
+    "benchmark": {
+      "start": "2016-12-30",
+      "end": "2026-10-16",
+      "years": 9.793292265571527,
+      "start_value": 500000.0,
+      "end_value": 1575836.396916039,
+      "total_return": 2.1516727938320783,
+      "cagr": 0.12436258848135506,
+      "volatility": 0.14645709566206463,
+      "sharpe": 0.46061297737448353,
+      "sortino": 0.6324279329989555,
+      "max_drawdown": -0.3633661476577137,
+      "max_drawdown_date": "2020-03-23"
+    },
+    "relative": {
+      "excess_cagr": 0.11777020697452079,
+      "beta": 1.1784919575533022,
+      "tracking_error": 0.13349656603273843,
+      "information_ratio": 0.8821965274046004,
+      "correlation": 0.7967463249375459
+    }
+  },
+  "warnings": [
+    "NIFTYBEES.NS: replaced 2 bad price tick(s) on 2019-12-19, 2019-12-20 with previous close",
+    "TMPV: demerger on 2025-10-14 - spun-off shares credited as cash \u20b9260.75/share (prev close - ex-date open; approximation)"
+  ],
+  "data_repairs": [
+    "NIFTYBEES.NS: replaced 2 bad price tick(s) on 2019-12-19, 2019-12-20 with previous close",
+    "TMPV: demerger on 2025-10-14 - spun-off shares credited as cash \u20b9260.75/share (prev close - ex-date open; approximation)"
+  ],
+  "bias_notes": [
+    "SURVIVORSHIP BIAS: the universe is TODAY's index constituents applied to the whole history. Free historical Nifty membership lists were not available, so stocks that were dropped from the index (often poor performers) are missing. Results are likely flattered.",
+    "Delisted companies are not in Yahoo Finance and cannot be included.",
+    "Current brokerage/statutory charge rates are applied to the whole period.",
+    "Dividends are credited on the ex-date and dividend tax is ignored; capital-gains tax is ignored.",
+    "Financial statement publication dates are ESTIMATED (period end + lag), and Yahoo shows the latest (possibly restated) figures rather than as-first-published numbers."
+  ]
+}

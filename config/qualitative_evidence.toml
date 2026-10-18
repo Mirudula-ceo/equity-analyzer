@@ -1,0 +1,41 @@
+# ------------------------------------------------------------------
+# Qualitative metrics: 1, 2, 3, 20, 21, 22
+#
+# These cannot be calculated from free numeric data. The app shows them
+# as "Insufficient Data" until YOU add a reviewed entry here with
+# evidence and a source. Nothing in this file is filled in by the program.
+#
+# Rubric (use exactly Pass / Watch / Fail):
+#
+# business_quality
+#   Pass : simple, understandable business; 5+ yrs of positive earnings; ROCE > cost of capital most years
+#   Watch: cyclical or complex business, or uneven profitability
+#   Fail : repeated losses, frequent restructuring, or business model not understood
+# industry_growth_tam
+#   Pass : industry expected to grow faster than nominal GDP (~10%) with large headroom (cite report)
+#   Watch: industry growing roughly with GDP
+#   Fail : shrinking or saturated industry
+# moat
+#   Pass : identifiable durable advantage (brand, network, cost, switching cost, licence) AND margins/ROCE stable or rising over 5 yrs
+#   Watch: some advantage but evidence mixed
+#   Fail : commodity business, no pricing power
+# management_capital_allocation
+#   Pass : no governance red flags, sensible acquisitions, dividends/buybacks when cash idle, low related-party transactions
+#   Watch: one concern (e.g. large related-party deals, aggressive accounting, auditor change)
+#   Fail : fraud allegations, SEBI orders, repeated equity dilution without returns
+# order_book_visibility
+#   Pass : order book >= 2x annual revenue, or long-term contracts/recurring revenue
+#   Watch: 1-2x, or partially recurring
+#   Fail : < 1x and no recurring revenue (if not relevant for the business, leave out)
+# customer_concentration
+#   Pass : top customer < 10% of revenue
+#   Watch: top customer 10-25%
+#   Fail : top customer > 25% (or top 5 > 60%)
+#
+# Example entry (remove the leading '#' on each line to activate):
+# [TCS.business_quality]
+# status = "Pass"
+# evidence = "IT services; profitable every year since listing; ROCE > 40%."
+# source = "TCS Annual Report FY2025, p.12 - https://www.tcs.com/investor-relations"
+# reviewed_on = "2026-10-16"
+# reviewer = "your name"

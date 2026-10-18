@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+.pytest_cache/
+reports/setup_log.txt
+reports/test_results.txt
+reports/pipeline_log.txt

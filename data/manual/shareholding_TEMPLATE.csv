@@ -1,0 +1,2 @@
+symbol,period_end,promoter_pct,promoter_pledged_pct,source,publication_date
+EXAMPLE,2026-06-30,50.0,0.0,"Copy from official BSE/NSE shareholding pattern filing; rename this file to shareholding.csv",2026-07-21

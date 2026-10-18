@@ -1,0 +1,105 @@
+{
+  "run_id": "20261016_113916_f961",
+  "strategy": "fundamental",
+  "label": "27-metric score, point-in-time (partial: quantitative metrics only)",
+  "is_full_27_metric_backtest": false,
+  "universe": "NIFTY50 current constituents (50 symbols; 0 without price data)",
+  "missing_symbols": [],
+  "params": {
+    "initial_capital": 500000,
+    "start_date": "2016-01-01",
+    "end_date": "",
+    "rebalance_frequency": "Q",
+    "max_stocks": 10,
+    "weighting": "equal",
+    "tolerance": 0.02,
+    "execution": "next_open",
+    "risk_free_rate": 0.065,
+    "momentum_lookback_months": 12,
+    "momentum_skip_months": 1,
+    "min_price_history_days": 260,
+    "start_used": "2022-06-14"
+  },
+  "first_trade": "2023-07-03",
+  "benchmark": "NIFTYBEES.NS adjusted close (Nifty 50 ETF, dividends reinvested, after ETF fees)",
+  "report": {
+    "portfolio": {
+      "start": "2023-06-30",
+      "end": "2026-10-16",
+      "years": 3.29637234770705,
+      "start_value": 500000.0,
+      "end_value": 819517.8667270067,
+      "total_return": 0.6390357334540135,
+      "cagr": 0.1617116815440891,
+      "volatility": 0.13178343895049133,
+      "sharpe": 0.7518446097174779,
+      "sortino": 1.102854226954143,
+      "max_drawdown": -0.18501113546002113,
+      "max_drawdown_date": "2025-03-04"
+    },
+    "trades": {
+      "completed_sells": 29,
+      "full_exits": 26,
+      "win_rate": 0.7586206896551724,
+      "avg_gain_pct": 0.2858982987101428,
+      "avg_loss_pct": -0.1901665982783272,
+      "realized_pnl": 169520.21101826202
+    },
+    "turnover": 0.9738914109578295,
+    "costs": {
+      "charges_total": 5676.176367201317,
+      "slippage_total": 4653.068023345626,
+      "cost_brokerage": 0.0,
+      "cost_stt": 4653.636234135102,
+      "cost_exchange": 138.21299615381247,
+      "cost_sebi": 4.653636234135101,
+      "cost_stamp": 391.9875068484375,
+      "cost_gst": 25.71599382983057,
+      "cost_dp": 461.96999999999997,
+      "cost_basis": 1868289.7062420466
+    },
+    "dividends_received": 93291.45,
+    "pnl": {
+      "realized": 169520.21101826202,
+      "unrealized": 56706.20570874476,
+      "dividends": 93291.45,
+      "total_change": 319517.86672700674
+    },
+    "benchmark": {
+      "start": "2023-06-30",
+      "end": "2026-10-16",
+      "years": 3.29637234770705,
+      "start_value": 500000.0,
+      "end_value": 624685.4473203006,
+      "total_return": 0.24937089464060125,
+      "cagr": 0.06987407667118606,
+      "volatility": 0.11836067008226975,
+      "sharpe": 0.11078930135422113,
+      "sortino": 0.1576108247573547,
+      "max_drawdown": -0.15234440367699353,
+      "max_drawdown_date": "2025-03-04"
+    },
+    "relative": {
+      "excess_cagr": 0.09183760487290304,
+      "beta": 0.8849902793720333,
+      "tracking_error": 0.08111735947260974,
+      "information_ratio": 1.1321572283663046,
+      "correlation": 0.794849818133225
+    }
+  },
+  "warnings": [
+    "NIFTYBEES.NS: replaced 2 bad price tick(s) on 2019-12-19, 2019-12-20 with previous close",
+    "TMPV: demerger on 2025-10-14 - spun-off shares credited as cash \u20b9260.75/share (prev close - ex-date open; approximation)"
+  ],
+  "data_repairs": [
+    "NIFTYBEES.NS: replaced 2 bad price tick(s) on 2019-12-19, 2019-12-20 with previous close",
+    "TMPV: demerger on 2025-10-14 - spun-off shares credited as cash \u20b9260.75/share (prev close - ex-date open; approximation)"
+  ],
+  "bias_notes": [
+    "SURVIVORSHIP BIAS: the universe is TODAY's index constituents applied to the whole history. Free historical Nifty membership lists were not available, so stocks that were dropped from the index (often poor performers) are missing. Results are likely flattered.",
+    "Delisted companies are not in Yahoo Finance and cannot be included.",
+    "Current brokerage/statutory charge rates are applied to the whole period.",
+    "Dividends are credited on the ex-date and dividend tax is ignored; capital-gains tax is ignored.",
+    "Financial statement publication dates are ESTIMATED (period end + lag), and Yahoo shows the latest (possibly restated) figures rather than as-first-published numbers."
+  ]
+}

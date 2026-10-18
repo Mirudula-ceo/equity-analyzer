@@ -1,0 +1,86 @@
+# ------------------------------------------------------------------
+# Equity Analyzer settings. Edit with Notepad, then restart the dashboard.
+# ------------------------------------------------------------------
+database_path = "data/equity.db"
+
+[data]
+price_history_years = 11           # years of daily prices to download
+request_pause_seconds = 1.0        # polite pause between Yahoo requests
+# yfinance gives no publication date for statements. We assume results become
+# public this many days after the fiscal period ends (no look-ahead logic).
+annual_publication_lag_days = 75   # SEBI LODR: audited annual within 60 days; buffer added
+quarterly_publication_lag_days = 50
+
+[universe]
+name = "NIFTY50"
+# Official current-constituent CSV (public). If unavailable, config/nifty50_fallback.csv is used.
+nifty50_url = "https://www.niftyindices.com/IndexConstituent/ind_nifty50list.csv"
+nifty500_url = "https://www.niftyindices.com/IndexConstituent/ind_nifty500list.csv"
+
+[benchmark]
+# NIFTYBEES (Nifty 50 ETF) adjusted close = dividends reinvested, minus ETF costs.
+total_return_proxy = "NIFTYBEES.NS"
+price_index = "^NSEI"
+
+[backtest]
+initial_capital = 500000
+start_date = "2016-01-01"
+end_date = ""                      # empty = latest available
+rebalance_frequency = "Q"          # M, Q or A
+max_stocks = 10
+weighting = "equal"
+tolerance = 0.02                   # skip trims/top-ups smaller than 2% of portfolio
+execution = "next_open"            # signal at close, trade at next day's open
+risk_free_rate = 0.065             # annual, for Sharpe/Sortino
+momentum_lookback_months = 12
+momentum_skip_months = 1
+min_price_history_days = 260
+
+[costs]                            # Indian equity delivery trades
+brokerage_pct = 0.0                # many discount brokers charge 0 for delivery
+brokerage_max_per_order = 20.0
+stt_pct = 0.10                     # buy and sell
+exchange_txn_pct = 0.00297         # NSE transaction charge
+sebi_fee_per_crore = 10.0
+stamp_duty_buy_pct = 0.015         # buy side only
+gst_pct = 18.0                     # on brokerage + exchange + SEBI fees
+dp_charge_per_sell = 15.93         # depository charge per scrip per sell
+slippage_bps = 10                  # 0.10% each way
+
+[scoring]
+min_coverage_for_rank = 0.40       # evaluated / applicable metrics needed to be ranked
+points = { Pass = 1.0, Watch = 0.5, Fail = 0.0 }
+
+# Thresholds: value >= pass -> Pass; >= watch -> Watch; else Fail.
+# lower_is_better reverses the comparison.
+[thresholds]
+revenue_growth_cagr        = { pass = 0.12, watch = 0.07 }
+eps_growth_cagr            = { pass = 0.12, watch = 0.07 }
+roce                       = { pass = 0.15, watch = 0.10 }
+roe                        = { pass = 0.15, watch = 0.10 }
+roe_bank                   = { pass = 0.14, watch = 0.10 }
+roic                       = { pass = 0.12, watch = 0.08 }
+operating_margin           = { pass = 0.15, watch = 0.08 }
+cfo_to_pat                 = { pass = 0.90, watch = 0.70 }
+fcf_positive_years         = { pass = 4, watch = 3 }          # out of 5
+fcf_yield                  = { pass = 0.04, watch = 0.02 }
+cash_conversion_cycle_days = { pass = 60, watch = 120, lower_is_better = true }
+non_core_income_share      = { pass = 0.10, watch = 0.25, lower_is_better = true }
+debt_to_equity             = { pass = 0.5, watch = 1.0, lower_is_better = true }
+interest_coverage          = { pass = 5.0, watch = 2.5 }
+piotroski                  = { pass = 7, watch = 5 }
+promoter_holding           = { pass = 0.50, watch = 0.35 }
+promoter_pledge            = { pass = 0.0, watch = 0.10, lower_is_better = true }
+pe                         = { pass = 25, watch = 40, lower_is_better = true }
+pb                         = { pass = 4, watch = 8, lower_is_better = true }
+pb_bank                    = { pass = 2.5, watch = 4, lower_is_better = true }
+ev_ebitda                  = { pass = 15, watch = 25, lower_is_better = true }
+peg                        = { pass = 1.0, watch = 2.0, lower_is_better = true }
+margin_of_safety           = { pass = 0.25, watch = 0.0 }
+
+[dcf]                              # used only for Margin of Safety
+discount_rate = 0.12
+terminal_growth = 0.05
+years = 10
+max_growth = 0.20
+min_growth = 0.0
