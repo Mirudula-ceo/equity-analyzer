@@ -36,8 +36,13 @@ def rank_symbols(con, symbols: list[str], as_of=None, cfg=None) -> tuple[pd.Data
     rows, details = [], []
     for s in symbols:
         res, sc, pit = analyze_symbol(con, s, as_of, cfg, qual)
+        per = pit.periods()
+        pdate = pit.price_date()
         rows.append({"symbol": s, "name": pit.info.get("longName") or pit.info.get("shortName") or s,
-                     "sector": pit.info.get("sector"), **sc})
+                     "sector": pit.info.get("sector"), "industry": pit.info.get("industry"),
+                     "price": pit.price(), "price_date": None if pdate is None else pd.Timestamp(pdate).date(),
+                     "market_cap": pit.market_cap(),
+                     "latest_period": per[-1].strftime("%Y-%m") if per else None, **sc})
         f = results_frame(res)
         f.insert(0, "symbol", s)
         details.append(f)

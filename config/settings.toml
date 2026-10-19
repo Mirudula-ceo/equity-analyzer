@@ -84,3 +84,37 @@ terminal_growth = 0.05
 years = 10
 max_growth = 0.20
 min_growth = 0.0
+
+# ------------------------------------------------------------------
+# Company Research, Important Events & Ranking module (docs/COMPANY_RESEARCH_MODULE.md)
+# ------------------------------------------------------------------
+[research]
+# Official NSE security lists. The company count comes from these files - never hard-coded.
+mainboard_url = "https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv"
+sme_url = "https://nsearchives.nseindia.com/emerge/corporates/content/SME_EQUITY_L.csv"
+etf_url = "https://nsearchives.nseindia.com/content/equities/eq_etfseclist.csv"
+symbol_change_url = "https://nsearchives.nseindia.com/content/equities/symbolchange.csv"
+announcements_rss_url = "https://nsearchives.nseindia.com/content/RSS/Online_announcements.xml"
+# Which segments / series may be scored and ranked by the 27-metric engine.
+# SME and ETF are listed and get research pages, but are not ranked by default.
+eligible_segments = ["MAINBOARD"]
+eligible_series = ["EQ", "BE", "BZ"]
+event_history_years = 10           # minimum history kept on the timeline (nothing is ever deleted)
+dedupe_window_days = 30            # same company + category + similar title within this window = same event
+dedupe_title_similarity = 0.6
+# News/events are RESEARCH CONTEXT ONLY. No transparent event-scoring rule exists yet,
+# so events never change a score or rank. Do not switch this on without written rules.
+event_scoring = false
+top_n_options = [10, 25, 50, 90, 100]
+
+[research.refresh_days]            # a dataset older than this is shown as "Stale"
+prices = 3
+financials = 100
+listings = 7
+announcements = 2
+events_reverify = 180              # events not re-verified for this long are flagged
+
+[research.alerts]
+rank_change_min = 5                # alert when rank moves by at least this many places
+alert_categories = ["Acquisition / merger", "Divestment", "Project delay / cancellation",
+                    "Debt / default", "Litigation / regulatory action", "Management change"]

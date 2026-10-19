@@ -12,6 +12,9 @@
 | Corporate announcements, order book, customer concentration | Exchange filings / annual reports (PDF) | **Not automated** – needs human reading |
 | Benchmark | NIFTYBEES.NS adjusted close (Nifty 50 ETF) as total-return proxy; ^NSEI price index also stored | Automated (proxy, not the official TRI) |
 | Delisted companies | not in Yahoo | **Unavailable** |
+| List of all NSE securities (mainboard, SME, ETF), symbol changes | NSE public archive CSVs (`nsearchives.nseindia.com`); manual copy in `data/manual/` if blocked | Automated with manual fallback |
+| Corporate-announcement headlines | NSE public announcements RSS → review inbox (keyword category suggestions only) | Automated inbox; **reading and summarising is manual** |
+| Company events / business plans timeline | Human-reviewed rows in `data/manual/company_events.csv` with source links | **Manual by design**; never scored |
 
 Not used: screener.in / Tijori / Trendlyne exports (require login/subscription), NSE JSON APIs (anti-bot).
 
