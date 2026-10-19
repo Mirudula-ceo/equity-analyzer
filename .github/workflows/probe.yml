@@ -10,6 +10,7 @@ jobs:
       - run: |
           UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36'
           for u in https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv https://archives.nseindia.com/content/equities/EQUITY_L.csv https://nsearchives.nseindia.com/emerge/corporates/content/SME_EQUITY_L.csv https://nsearchives.nseindia.com/content/equities/eq_etfseclist.csv https://nsearchives.nseindia.com/content/equities/symbolchange.csv https://nsearchives.nseindia.com/content/RSS/Online_announcements.xml "https://news.google.com/rss/search?q=Infosys%20share&hl=en-IN&gl=IN&ceid=IN:en" "https://query1.finance.yahoo.com/v8/finance/chart/TCS.NS?range=5d&interval=1d" "https://query.wikidata.org/sparql?format=json&query=SELECT%20%3Fs%20WHERE%20%7B%3Fi%20wdt%3AP946%20%22INE009A01021%22%3B%20wdt%3AP856%20%3Fs%7D" https://www.infosys.com/ ; do
-            code=$(curl -s -o /tmp/o -w '%{http_code}' -m 20 -A "$UA" -H 'Accept: */*' "$u"); echo "$code $(wc -c </tmp/o) $u"; head -c 300 /tmp/o | tr '\n' ' '; echo; done
+            code=$(curl -s -o /tmp/o -w '%{http_code}' -m 20 -A "$UA" -H 'Accept: */*' "$u"); echo "::notice::$code $(wc -c </tmp/o) ${u:0:70} | $(head -c 160 /tmp/o | tr '\n\r' '  ')"; done
           pip -q install yfinance && python -c "
-          import yfinance as yf; t=yf.Ticker('TCS.NS'); print(t.history(period='5d').tail(2)); i=t.info; print({k:i.get(k) for k in ['website','heldPercentInsiders','fullTimeEmployees','irWebsite']}); print((i.get('longBusinessSummary') or '')[:150]); print(t.income_stmt.shape)"
+          print('::notice::yfinance start')
+          import yfinance as yf; t=yf.Ticker('TCS.NS'); h=t.history(period='5d'); print('::notice::hist rows', len(h)); i=t.info; print('::notice::info', {k:i.get(k) for k in ['website','heldPercentInsiders','fullTimeEmployees','irWebsite']}, 'summary', len(i.get('longBusinessSummary') or ''), 'income', t.income_stmt.shape)"
