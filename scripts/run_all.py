@@ -4,6 +4,11 @@ Usage (from the project folder, with the virtual environment active):
     python scripts/run_all.py            # full Nifty 50
     python scripts/run_all.py --skip-download
     python scripts/run_all.py --symbols TCS INFY RELIANCE
+    python scripts/run_all.py --universe NSE_ALL   # every eligible NSE mainboard company (slow: hours)
+
+Research module (docs/COMPANY_RESEARCH_MODULE.md): refreshes the official NSE company lists and the
+exchange-announcement inbox, imports data/manual/company_events.csv and research_coverage.csv,
+saves a ranking snapshot (for "why did the rank change?") and creates watchlist alerts.
 """
 from __future__ import annotations
 
@@ -24,6 +29,7 @@ from equity.backtest.runner import run_backtest  # noqa: E402
 from equity.config import REPORTS_DIR, load_settings  # noqa: E402
 from equity.data.collect import collect  # noqa: E402
 from equity.data.validate import check_publication_dates, coverage, price_jumps  # noqa: E402
+from equity.research import announcements, events, listings, monitor, service  # noqa: E402
 
 
 def fmt_pct(x):
@@ -35,17 +41,42 @@ def main():
     ap.add_argument("--skip-download", action="store_true")
     ap.add_argument("--symbols", nargs="*")
     ap.add_argument("--no-backtest", action="store_true")
+    ap.add_argument("--universe", choices=["NIFTY50", "NSE_ALL"], default="NIFTY50",
+                    help="NSE_ALL = every eligible company in the official NSE list (very slow download)")
     a = ap.parse_args()
     REPORTS_DIR.mkdir(exist_ok=True)
     cfg = load_settings()
 
-    if not a.skip_download:
-        print("STEP 1/4  Downloading data (this takes ~5-10 minutes for Nifty 50)...", flush=True)
-        collect(a.symbols, progress=lambda m: print("   ", m, flush=True))
-
     con = db.connect()
+    research = {}
+    if not a.skip_download:
+        print("STEP 0/4  Refreshing official NSE company lists and exchange announcements...", flush=True)
+        research["listings"] = listings.refresh_listings(con, cfg)
+        research["inbox"] = announcements.refresh_inbox(con, cfg)
+        for k, v in research.items():
+            print("   ", k, v, flush=True)
+        print("STEP 1/4  Downloading data (this takes ~5-10 minutes for Nifty 50)...", flush=True)
+        to_get = a.symbols
+        if a.universe == "NSE_ALL" and not to_get:
+            to_get = listings.eligible_symbols(con, cfg)
+            print(f"    NSE_ALL: {len(to_get)} eligible companies in the official list", flush=True)
+            if not to_get:
+                print("    Official NSE list unavailable - falling back to Nifty 50", flush=True)
+                to_get = None
+        collect(to_get, progress=lambda m: print("   ", m, flush=True))
+
+    # human-reviewed research inputs (always re-imported; the import is idempotent)
+    ev_rep = events.import_events_csv(con, cfg=cfg)
+    cov_rep = events.import_coverage_csv(con)
+    if ev_rep is not None:
+        ev_rep.rows.to_csv(REPORTS_DIR / "events_import_report.csv", index=False)
+        print(f"    company_events.csv: {ev_rep.counts}", flush=True)
+    if cov_rep is not None:
+        cov_rep.to_csv(REPORTS_DIR / "coverage_import_report.csv", index=False)
+
     uni = db.read_universe(con, "NIFTY50")
-    symbols = a.symbols or uni["symbol"].tolist()
+    symbols = a.symbols or service.scorable_symbols(con, cfg) or uni["symbol"].tolist()
+    label = "CUSTOM" if a.symbols else service.universe_label(con)
     print("STEP 2/4  Verifying downloaded data...", flush=True)
     fin = db.read_financials(con)
     prices = db.read_prices(con)
@@ -72,6 +103,8 @@ def main():
     order = details.drop_duplicates("name").set_index("name")["id"]
     status_counts = status_counts.loc[order.sort_values().index]
     status_counts.to_csv(REPORTS_DIR / "metric_availability.csv")
+    snap = monitor.save_snapshot(con, table, details, label, cfg=cfg)
+    n_alerts = monitor.generate_alerts(con, snap, cfg)
 
     runs = []
     if not a.no_backtest:
@@ -101,6 +134,16 @@ def main():
          "## Top 10 by conservative 27-metric score (current data)", "",
          table.head(10)[["rank", "symbol", "name", "conservative_score", "coverage", "pass", "watch",
                          "fail", "insufficient", "not_applicable"]].to_markdown(index=False), "",
+         "## Company research module",
+         f"- Ranking snapshot saved: {snap} ({label}); new watchlist alerts: {n_alerts}",
+         "- Official NSE list: " + (", ".join(f"{r.segment} {r.status}: {r.companies}" for r in
+                                               listings.listing_summary(con).itertuples()) or "not loaded"),
+         f"- Events on timeline: {con.execute('SELECT COUNT(*) FROM events').fetchone()[0]}; "
+         f"last import: {ev_rep.counts if ev_rep is not None else 'no data/manual/company_events.csv'}",
+         f"- Exchange filings waiting for review: "
+         f"{len(announcements.read_inbox(con, state='to review'))}",
+         f"- Open events not re-verified within {cfg['research']['refresh_days']['events_reverify']} days: "
+         f"{len(events.stale_verifications(con, cfg))}", "",
          "## Backtests executed"]
     for r in runs:
         if "error" in r:

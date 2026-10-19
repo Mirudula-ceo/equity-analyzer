@@ -42,6 +42,52 @@ CREATE TABLE IF NOT EXISTS fetch_log (
 CREATE TABLE IF NOT EXISTS backtest_runs (
     run_id TEXT PRIMARY KEY, created_at TEXT, label TEXT,
     params_json TEXT, summary_json TEXT);
+-- ---------------------------------------------------------------- research module
+-- Every NSE-listed security from the official exchange lists (count is never hard-coded).
+CREATE TABLE IF NOT EXISTS nse_listings (
+    symbol TEXT PRIMARY KEY, isin TEXT, name TEXT, segment TEXT, series TEXT,
+    listing_date TEXT, face_value REAL, status TEXT,
+    first_seen TEXT, last_seen TEXT, source TEXT, retrieved_at TEXT);
+CREATE TABLE IF NOT EXISTS symbol_changes (
+    old_symbol TEXT, new_symbol TEXT, effective_date TEXT, company TEXT,
+    source TEXT, retrieved_at TEXT,
+    PRIMARY KEY (old_symbol, new_symbol, effective_date));
+-- Permanent company timeline. Rows are never deleted; corrections go to event_updates.
+CREATE TABLE IF NOT EXISTS events (
+    event_id TEXT PRIMARY KEY, symbol TEXT, isin TEXT, title TEXT, category TEXT,
+    event_date TEXT, published_date TEXT, first_captured TEXT,
+    summary TEXT, business_relevance TEXT, segment_affected TEXT, business_stage TEXT,
+    financial_link TEXT, impact_quantified INTEGER, impact_note TEXT,
+    reflected_in_metrics TEXT, expected_timeline TEXT, next_milestone TEXT,
+    status TEXT, evidence_status TEXT, last_verified TEXT, updated_at TEXT);
+CREATE TABLE IF NOT EXISTS event_sources (
+    event_id TEXT, url TEXT, source_name TEXT, source_type TEXT,
+    published_date TEXT, retrieved_at TEXT, link_status TEXT,
+    PRIMARY KEY (event_id, url));
+CREATE TABLE IF NOT EXISTS event_updates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, event_id TEXT, field TEXT,
+    old_value TEXT, new_value TEXT, note TEXT, source_url TEXT,
+    published_date TEXT, recorded_at TEXT);
+-- Where we looked and what was (not) found. "Not found" != "company did not do it".
+CREATE TABLE IF NOT EXISTS research_coverage (
+    symbol TEXT, topic TEXT, source_type TEXT, searched_on TEXT, result TEXT,
+    note TEXT, source_url TEXT, recorded_at TEXT,
+    PRIMARY KEY (symbol, topic, source_type, searched_on));
+-- Exchange announcements waiting for human review (never scored, never auto-published).
+CREATE TABLE IF NOT EXISTS filings_inbox (
+    guid TEXT PRIMARY KEY, symbol TEXT, title TEXT, published TEXT, link TEXT,
+    suggested_category TEXT, review_state TEXT, source TEXT, retrieved_at TEXT);
+CREATE TABLE IF NOT EXISTS rank_history (
+    snapshot_id TEXT, snapshot_date TEXT, universe_label TEXT, symbol TEXT,
+    rank INTEGER, eligible INTEGER, points REAL, applicable INTEGER,
+    conservative_score REAL, coverage REAL, statuses_json TEXT, settings_hash TEXT,
+    PRIMARY KEY (snapshot_id, symbol));
+CREATE TABLE IF NOT EXISTS watchlist (
+    symbol TEXT PRIMARY KEY, added_at TEXT, note TEXT);
+CREATE TABLE IF NOT EXISTS alerts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT, symbol TEXT,
+    alert_type TEXT, message TEXT, ref TEXT, seen INTEGER DEFAULT 0,
+    UNIQUE (symbol, alert_type, ref));
 """
 
 

@@ -42,3 +42,27 @@ def pick_symbol(label="NSE symbol"):
     s = st.selectbox(label, syms, index=idx)
     st.session_state["symbol"] = s
     return s
+
+
+# ---------------------------------------------------------------- research module helpers
+@st.cache_data(show_spinner="Scoring companies (27 metrics)...", ttl=3600)
+def ranked_universe(symbols: tuple[str, ...]):
+    """Ranking of the scorable universe; cached so every page explains the SAME calculation."""
+    from equity.research import service
+    c = con()
+    t, d = service.rank_universe(c, list(symbols))
+    c.close()
+    return t, d
+
+
+def scorable():
+    from equity.research import service
+    c = con()
+    s = tuple(service.scorable_symbols(c))
+    label = service.universe_label(c)
+    c.close()
+    return s, label
+
+
+def fmt_cr(x):
+    return "n/a" if x is None or x != x else f"₹{x / 1e7:,.0f} cr"
