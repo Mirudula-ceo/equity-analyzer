@@ -24,7 +24,8 @@ RULES: list[tuple[str, str]] = [
     ("Acquisition / merger", r"acquisition|acquire|amalgamation|merger|scheme of arrangement|takeover"),
     ("Divestment", r"divest|disinvest|sale of (?:stake|business|undertaking)|slump sale"),
     ("Subsidiary / joint venture", r"joint venture|\bjv\b|incorporation of (?:a )?(?:wholly owned )?subsidiary"),
-    ("Order / contract win", r"\border(?:s)?\b.*(?:receiv|win|bag|secur)|letter of award|contract (?:award|win)"),
+    ("Order / contract win", r"\b(?:wins?|won|bags?|bagged|secures?|secured|receiv\w*|bags)\b.{0,60}\b(?:order|contract)s?\b|"
+                             r"\border(?:s)?\b.{0,40}(?:receiv|win|bag|secur)|letter of award|contract (?:award|win)"),
     ("Capacity / factory expansion", r"capacity|new plant|commission|greenfield|brownfield|expansion"),
     ("Capex / funding plan", r"fund rais|qip|preferential (?:issue|allotment)|rights issue|ncd|debenture|capex"),
     ("Product / brand launch", r"\blaunch"),

@@ -7,14 +7,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 
-from common import con, ranked_universe, scorable, setup  # noqa: E402
+from common import con, ranking, scorable, setup  # noqa: E402
 from equity.analysis import rank_symbols  # noqa: E402
 from equity.config import load_settings  # noqa: E402
 from equity.metrics.engine import DEFS, FAIL, INSUFFICIENT, PASS, WATCH  # noqa: E402
 from equity.research import events as ev_mod  # noqa: E402
 from equity.research import monitor  # noqa: E402
 from equity.research.constants import CATEGORIES, EVENT_STATUSES  # noqa: E402
-from equity.research.service import Filters, apply_filters, universe_label  # noqa: E402
+from equity.research.service import Filters, apply_filters  # noqa: E402
 
 setup("Stock Ranking")
 cfg = load_settings()
@@ -26,11 +26,18 @@ removed from the denominator. **Conservative score** = points ÷ applicable metr
 News and events are **never** part of the score."""
 )
 
-syms, label = scorable()
-if not syms:
-    st.warning("No scorable companies yet. Run `run_full_pipeline.bat`.")
+src = ranking()
+syms, _ = scorable()
+if src["table"].empty:
+    st.warning("No scored companies yet. The weekly GitHub Action (or `run_full_pipeline.bat`) fills this in.")
     st.stop()
-as_of = st.date_input("Point-in-time date (optional – leave empty for today's ranking)", value=None)
+if src["kind"] == "snapshot":
+    m = src["meta"]
+    st.success(f"**All NSE companies:** {m.get('companies_scored', len(src['table'])):,} eligible companies scored, "
+               f"{m.get('companies_ranked', int(src['table']['eligible'].sum())):,} ranked · snapshot "
+               f"{str(m.get('generated_at', ''))[:16].replace('T', ' ')} UTC (refreshed weekly by GitHub Actions).")
+as_of = st.date_input("Point-in-time date (optional – re-scores only the companies with full local data)",
+                      value=None)
 
 
 @st.cache_data(show_spinner="Scoring companies...")
@@ -41,12 +48,16 @@ def compute_pit(symbols, as_of):
     return t, d
 
 
-t, d = compute_pit(syms, pd.Timestamp(as_of)) if as_of else ranked_universe(syms)
+if as_of:
+    t, d = compute_pit(syms, pd.Timestamp(as_of))
+    label = f"point-in-time {as_of} ({len(syms)} companies with full local data)"
+else:
+    t, d, label = src["table"], src["details"], src["label"]
 c = con()
 events = ev_mod.read_events(c, as_of=pd.Timestamp(as_of) if as_of else None)
 prev_rank = {}
 for s in t["symbol"]:
-    p = monitor.previous_snapshot(c, s, universe_label(c))
+    p = monitor.previous_snapshot(c, s, label)
     if p:
         prev_rank[s] = p["rank"]
 c.close()
@@ -54,10 +65,12 @@ c.close()
 # ---------------------------------------------------------------- filters
 with st.expander("Filters", expanded=True):
     a, b, cc = st.columns(3)
-    opts = [f"Top {n}" for n in cfg["research"]["top_n_options"]] + ["Custom", "All"]
-    pick = a.selectbox("Show", opts, index=0)
-    top_n = None if pick == "All" else (a.number_input("Custom N", 1, 5000, 20) if pick == "Custom"
-                                        else int(pick.split()[1]))
+    n_max = max(int(t["rank"].notna().sum()), 1)
+    show_all = a.checkbox("Show all companies", value=False)
+    top_n = None if show_all else int(a.number_input(
+        "Show top N (any number: 9, 99, 250 …)", min_value=1, max_value=max(n_max, 1),
+        value=min(10, n_max), step=1))
+    a.caption("Quick picks: " + " · ".join(str(n) for n in cfg["research"]["top_n_options"]))
     scope = b.radio("Rank within", ["Whole eligible universe", "Only the filtered companies"],
                     help="Universe: keep each company's overall rank. Filtered: re-rank 1..N inside the filter.")
     metric_names = {"overall": "Overall 27-metric score", **{dd.key: f"#{dd.id} {dd.name}" for dd in DEFS}}
@@ -97,7 +110,7 @@ f = Filters(top_n=top_n, scope="view" if scope.startswith("Only") else "universe
             event_statuses=ev_stat, event_since=ev_since.isoformat() if ev_since else None,
             min_coverage=min_cov or None, updated_since=upd.isoformat() if upd else None, rank_by=rank_by)
 rows, sentence = apply_filters(t, d, events, f)
-st.info(f"**{sentence}**" + (f" Point-in-time: {as_of}." if as_of else ""))
+st.info(f"**{sentence}** Ranking: {label}.")
 
 rows["change"] = rows.apply(lambda r: None if r["symbol"] not in prev_rank or pd.isna(prev_rank[r["symbol"]])
                             or pd.isna(r["overall_rank"]) else int(prev_rank[r["symbol"]] - r["overall_rank"]), axis=1)

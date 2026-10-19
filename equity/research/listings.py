@@ -87,7 +87,7 @@ def parse_symbol_changes(df: pd.DataFrame) -> pd.DataFrame:
     old = _pick(df, "SM KEY SYMBOL", "OLD SYMBOL", "PREVIOUS SYMBOL", "SYMBOL")
     new = _pick(df, "SM NEW SYMBOL", "NEW SYMBOL", "CHANGED SYMBOL")
     when = _pick(df, "SM APPLICABLE FROM", "DATE OF CHANGE", "EFFECTIVE DATE", "APPLICABLE FROM", "DATE")
-    comp = _pick(df, "SM NAME", "COMPANY NAME", "NAME OF COMPANY", "COMPANY")
+    comp = _pick(df, "SM NAME", "COMPANY NAME", "NAME OF THE COMPANY", "NAME OF COMPANY", "COMPANY")
     if old is None or new is None:
         if df.shape[1] < 4:
             raise ValueError(f"cannot read symbol-change columns: {list(df.columns)}")
@@ -144,15 +144,46 @@ def refresh_listings(con, cfg: dict | None = None, get=requests.get,
             summary[seg] = {"status": f"unreadable - previous list kept ({exc})"}
             continue
         summary[seg] = apply_listing(con, new, seg, source, now)
+    summary["SYMBOL_CHANGES"] = refresh_symbol_changes(con, cfg, get, manual_dir, now)
+    return summary
+
+
+def refresh_symbol_changes(con, cfg, get, manual_dir, now) -> dict:
+    summary = {}
     raw, source = _load("SYMBOL_CHANGES", cfg, con, get, manual_dir)
     if raw is not None:
         try:
             ch = parse_symbol_changes(raw)
             ch["source"], ch["retrieved_at"] = source, now
-            summary["SYMBOL_CHANGES"] = {"rows": upsert_df(con, "symbol_changes", ch)}
+            summary = {"rows": upsert_df(con, "symbol_changes", ch)}
         except ValueError as exc:
             log_fetch(con, "SYMBOL_CHANGES", "nse_listing", "error", str(exc), source)
     return summary
+
+
+def load_manual_lists(con, manual_dir: Path | None = None, as_of: str | None = None) -> dict:
+    """Load the official NSE files kept in data/manual/ (refreshed by the GitHub Action) without
+    touching the network. Used by the online app, which may not be able to reach NSE itself."""
+    manual_dir = manual_dir or MANUAL_DIR
+    out = {}
+    for seg in ("MAINBOARD", "SME", "ETF"):
+        f = manual_dir / MANUAL_FILES[seg]
+        if f.exists():
+            try:
+                out[seg] = apply_listing(con, parse_listing(pd.read_csv(f), seg), seg,
+                                         f"NSE official list (copy in data/manual/{f.name}"
+                                         + (f", downloaded {as_of}" if as_of else "") + ")")
+            except ValueError as exc:
+                out[seg] = {"status": f"unreadable: {exc}"}
+    f = manual_dir / MANUAL_FILES["SYMBOL_CHANGES"]
+    if f.exists():
+        try:
+            ch = parse_symbol_changes(pd.read_csv(f))
+            ch["source"], ch["retrieved_at"] = f"NSE symbolchange.csv (data/manual/{f.name})", now_utc()
+            out["SYMBOL_CHANGES"] = {"rows": upsert_df(con, "symbol_changes", ch)}
+        except ValueError as exc:
+            out["SYMBOL_CHANGES"] = {"status": f"unreadable: {exc}"}
+    return out
 
 
 def apply_listing(con, new: pd.DataFrame, segment: str, source: str, now: str | None = None) -> dict:

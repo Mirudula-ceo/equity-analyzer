@@ -66,3 +66,31 @@ def scorable():
 
 def fmt_cr(x):
     return "n/a" if x is None or x != x else f"₹{x / 1e7:,.0f} cr"
+
+
+@st.cache_data(show_spinner="Loading the ranking...", ttl=3600)
+def ranking():
+    """The single ranking used everywhere: all-NSE snapshot if present, else live scoring."""
+    from equity.research import service
+    c = con()
+    src = service.ranking_source(c)
+    c.close()
+    return src
+
+
+@st.cache_data(show_spinner="Fetching latest news...", ttl=1800)
+def cached_news(name: str, symbol: str, days: int = 30):
+    from equity.research import news
+    return news.google_news(name, symbol, days)
+
+
+@st.cache_data(show_spinner=False, ttl=3600)
+def cached_announcements():
+    from equity.research import snapshot
+    return snapshot.load_announcements()
+
+
+@st.cache_data(show_spinner="Reading the company website...", ttl=6 * 3600)
+def cached_scan(url: str, ir_url: str | None = None):
+    from equity.research import website
+    return website.scan_website(url, ir_url)
