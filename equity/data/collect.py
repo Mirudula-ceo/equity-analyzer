@@ -164,7 +164,10 @@ INFO_KEYS = ["longName", "shortName", "sector", "industry", "currency", "financi
              "previousClose", "trailingPE", "forwardPE", "priceToBook", "enterpriseToEbitda",
              "trailingEps", "forwardEps", "bookValue", "heldPercentInsiders",
              "heldPercentInstitutions", "totalDebt", "totalCash", "ebitda",
-             "dividendYield", "beta", "fiftyTwoWeekHigh", "fiftyTwoWeekLow"]
+             "dividendYield", "beta", "fiftyTwoWeekHigh", "fiftyTwoWeekLow",
+             # company profile - shown on the research page, never scored
+             "website", "irWebsite", "longBusinessSummary", "fullTimeEmployees", "companyOfficers",
+             "address1", "city"]
 
 
 def statements_to_long(df: pd.DataFrame, symbol: str, statement: str, freq: str,
@@ -192,7 +195,16 @@ def statements_to_long(df: pd.DataFrame, symbol: str, statement: str, freq: str,
                  "source", "publication_date", "publication_date_estimated", "retrieved_at"]]
 
 
-def fetch_fundamentals(con, symbol: str, cfg: dict | None = None) -> dict:
+def _profile_clean(keep: dict) -> dict:
+    offs = keep.get("companyOfficers") or []
+    keep["companyOfficers"] = [{"name": o.get("name"), "title": o.get("title")} for o in offs[:8]
+                               if isinstance(o, dict)]
+    if keep.get("longBusinessSummary"):
+        keep["longBusinessSummary"] = str(keep["longBusinessSummary"])[:1500]
+    return keep
+
+
+def fetch_fundamentals(con, symbol: str, cfg: dict | None = None, quarterly: bool = True) -> dict:
     import yfinance as yf
 
     cfg = cfg or load_settings()
@@ -204,13 +216,15 @@ def fetch_fundamentals(con, symbol: str, cfg: dict | None = None) -> dict:
         info = t.info or {}
     except Exception as exc:  # noqa: BLE001
         log_fetch(con, symbol, "info", "error", str(exc), YAHOO)
-    keep = {k: info.get(k) for k in INFO_KEYS}
+    keep = _profile_clean({k: info.get(k) for k in INFO_KEYS})
     currency = info.get("financialCurrency") or "INR"
     con.execute("INSERT OR REPLACE INTO company_info VALUES (?,?,?,?,?,?,?,?)",
                 (symbol, keep.get("longName") or keep.get("shortName"), keep.get("sector"),
                  keep.get("industry"), currency, json.dumps(keep, default=str), YAHOO, ts))
     con.commit()
     for (stmt, freq), attr in STATEMENTS.items():
+        if freq == "quarterly" and not quarterly:
+            continue
         lag = cfg["data"][f"{freq}_publication_lag_days"]
         try:
             raw = getattr(t, attr)

@@ -33,7 +33,11 @@ Close the black dashboard window to stop the dashboard.
 - **Stock Ranking** page: Top 10/25/50/90/100/custom, rank across the universe or inside a filter, per-metric rank,
   sector, market cap, valuation, growth/profitability/debt and event filters.
 - **Research Inbox** page: official NSE company lists, exchange filings to review, CSV imports, watchlist alerts.
-- Events are **research context only** — they never change a score or rank.
+- **Latest News** page and tab: official NSE announcements for every company + news headlines.
+- **All NSE companies**: GitHub Actions scores every eligible NSE company weekly and refreshes NSE lists and
+  announcements every weekday (`.github/workflows/refresh-data.yml`); the online app reads those results.
+- *Website & Missing Data* tab: documents on the company's own website for the metrics the numbers can't answer.
+- Events and news are **research context only** — they never change a score or rank.
 
 ## How results should be read
 - **Insufficient Data never counts as a pass.** The *conservative score* gives it 0 points.

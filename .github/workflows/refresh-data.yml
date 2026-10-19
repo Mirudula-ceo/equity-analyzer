@@ -1,0 +1,112 @@
+# Refreshes the data the online app shows (it cannot download from NSE/Yahoo itself):
+#   daily  - official NSE company lists + exchange announcements
+#   weekly - the above + scores for EVERY eligible NSE company (27-metric engine, 12 parallel shards)
+# Results are committed to main; Streamlit Community Cloud redeploys automatically.
+# Run by hand: GitHub -> Actions -> "Refresh NSE data" -> Run workflow.
+name: Refresh NSE data
+
+on:
+  schedule:
+    - cron: "15 1 * * 1-5"   # 06:45 IST Mon-Fri: lists + announcements
+    - cron: "0 22 * * 5"     # 03:30 IST Saturday: full all-NSE scoring
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "full = score every NSE company (~1 hour); lists = NSE lists + announcements only"
+        type: choice
+        options: [full, lists]
+        default: full
+      limit:
+        description: "Test run: max companies per shard (0 = all)"
+        default: "0"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false
+
+jobs:
+  lists:
+    runs-on: ubuntu-24.04
+    outputs:
+      full: ${{ steps.mode.outputs.full }}
+    steps:
+      - id: mode
+        run: echo "full=${{ (github.event_name == 'workflow_dispatch' && inputs.mode == 'full') || github.event.schedule == '0 22 * * 5' }}" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt
+      - run: python scripts/refresh_universe.py lists --out work
+      - run: echo "::notice title=lists::$(wc -l < work/symbols.txt) eligible symbols; $(tr -d '\n' < work/lists_status.json)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lists
+          path: |
+            work/
+            data/manual/*.csv
+            data/snapshot/nse_announcements.csv.gz
+          retention-days: 3
+
+  score:
+    needs: lists
+    if: needs.lists.outputs.full == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { name: lists, path: . }
+      - run: >
+          python scripts/refresh_universe.py score --shard ${{ matrix.shard }} --of 12
+          --symbols work/symbols.txt --out work/parts --limit ${{ inputs.limit || 0 }} 2>&1 | tee work/score.log
+      - if: always()
+        run: echo "::notice title=shard ${{ matrix.shard }}::$(tail -n 1 work/score.log)"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: part-${{ matrix.shard }}
+          path: work/parts/
+          retention-days: 3
+
+  publish:
+    needs: [lists, score]
+    if: always() && needs.lists.result == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { name: lists, path: . }
+      - uses: actions/download-artifact@v4
+        if: needs.lists.outputs.full == 'true'
+        with: { pattern: part-*, path: work/parts, merge-multiple: true }
+      - name: Rank all companies and write the snapshot
+        if: needs.lists.outputs.full == 'true'
+        run: |
+          python scripts/refresh_universe.py publish --parts work/parts --symbols work/symbols.txt
+          echo "::notice title=publish::$(tr -d '\n' < data/snapshot/meta.json | cut -c1-900)"
+      - name: Commit to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add data/manual/*.csv
+          [ -f data/snapshot/nse_announcements.csv.gz ] && git add data/snapshot/nse_announcements.csv.gz
+          # a test run (limit > 0) scores only a few companies: never publish that ranking
+          if [ "${{ inputs.limit || 0 }}" = "0" ] && [ "${{ needs.lists.outputs.full }}" = "true" ]; then
+            git add data/snapshot/
+          fi
+          if git diff --cached --quiet; then echo "No data changes"; exit 0; fi
+          git commit -m "Data refresh $(date -u +%Y-%m-%d) ($([ '${{ needs.lists.outputs.full }}' = 'true' ] && echo full || echo lists))"
+          for i in 1 2 3; do git pull --rebase -q origin main && git push origin HEAD:main && break; sleep 10; done

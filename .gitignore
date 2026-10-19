@@ -4,3 +4,4 @@ __pycache__/
 reports/setup_log.txt
 reports/test_results.txt
 reports/pipeline_log.txt
+work/

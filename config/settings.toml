@@ -105,7 +105,8 @@ dedupe_title_similarity = 0.6
 # News/events are RESEARCH CONTEXT ONLY. No transparent event-scoring rule exists yet,
 # so events never change a score or rank. Do not switch this on without written rules.
 event_scoring = false
-top_n_options = [10, 25, 50, 90, 100]
+top_n_options = [9, 10, 25, 50, 99, 100, 250]   # quick picks; any number can be typed
+announcement_history_days = 365   # rolling history of NSE announcements kept in data/snapshot/
 
 [research.refresh_days]            # a dataset older than this is shown as "Stale"
 prices = 3

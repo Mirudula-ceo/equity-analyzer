@@ -42,6 +42,36 @@ publications (Bloomberg, Mint, Moneycontrol, Tickertape, Screener) are cited by 
 
 ---
 
+## All NSE companies, latest news and company websites (online app)
+
+The online app (Streamlit Community Cloud) cannot download from NSE or Yahoo itself, and full data for ~2,000
+companies would not fit in the repository. So **GitHub Actions** (`.github/workflows/refresh-data.yml`) does it:
+
+| Schedule (IST) | What it refreshes | Committed to |
+|---|---|---|
+| Mon–Fri 06:45 | Official NSE lists (mainboard, SME, ETF, symbol changes) + NSE corporate announcements | `data/manual/*.csv`, `data/snapshot/nse_announcements.csv.gz` |
+| Saturday 03:30 | The above + **27-metric scores for every eligible NSE company** (12 parallel shards, 2 years of prices, annual statements) | `data/snapshot/` (scores, metric results, company profiles, meta.json) |
+
+Run it any time: GitHub → **Actions** → *Refresh NSE data* → *Run workflow* (`mode = full`, `limit = 0`; a small
+`limit` is a test run that never publishes a ranking). Each run commits to `main`, and Streamlit redeploys.
+A run that scores fewer than half the companies (e.g. Yahoo blocked) keeps the previous ranking.
+
+* **Ranking** (Stock Ranking, Company Research, Latest News) uses this all-NSE snapshot whenever it exists — one
+  ranking everywhere. *Show top N* accepts any number (9, 99, 250 …).
+* **Latest news**: Company Research → *Latest News* shows the company's official NSE announcements and Google News
+  headlines (headline, publisher, date, link — never article text; labelled *Reported / unconfirmed*). The
+  **Latest News** page lists announcements for all companies with category / period / top-N filters, and
+  headlines for your watchlist or top-ranked companies. Headlines can be downloaded as pre-filled
+  `company_events.csv` rows (summary left empty for your own words).
+* **Company website** (*Website & Missing Data* tab): for each metric that is *Insufficient Data*, the app reads
+  the company's homepage and investor-relations pages and lists the documents to check (shareholding pattern,
+  annual report, investor presentation, governance pages, call transcripts) plus proxy facts (e.g. Yahoo insider
+  holding, officers) marked **not scored**. Ratings still come only from `config/qualitative_evidence.toml` and
+  `data/manual/shareholding.csv`. Websites come from the Yahoo profile; override in
+  `data/manual/company_websites.csv`. Sites that refuse automated visitors are reported as such.
+
+---
+
 ## Requirement → implementation
 
 ### 1. Cover every NSE company
