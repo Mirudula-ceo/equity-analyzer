@@ -26,18 +26,29 @@ RULES: list[tuple[str, str]] = [
     ("Subsidiary / joint venture", r"joint venture|\bjv\b|incorporation of (?:a )?(?:wholly owned )?subsidiary"),
     ("Order / contract win", r"\b(?:wins?|won|bags?|bagged|secures?|secured|receiv\w*|bags)\b.{0,60}\b(?:order|contract)s?\b|"
                              r"\border(?:s)?\b.{0,40}(?:receiv|win|bag|secur)|letter of award|contract (?:award|win)"),
+    ("Project delay / cancellation", r"(?:project|plant|launch|commission\w*|expansion|order|contract|acquisition|"
+                                     r"deal|agreement)\b.{0,60}\b(?:delay\w*|postpone\w*|cancel\w*|terminat\w*|"
+                                     r"withdr\w*)|(?:delay\w*|postpone\w*|cancel\w*|terminat\w*)\b.{0,60}\b"
+                                     r"(?:project|plant|launch|commission\w*|expansion|order|contract|acquisition|deal)"),
     ("Capacity / factory expansion", r"capacity|new plant|commission|greenfield|brownfield|expansion"),
-    ("Capex / funding plan", r"fund rais|qip|preferential (?:issue|allotment)|rights issue|ncd|debenture|capex"),
+    ("Capex / funding plan", r"fund rais|qip|preferential (?:issue|allotment)|rights issue|\bncds?\b|debenture|capex|"
+                             r"issue of securities|allotment of (?:equity|securities|shares)"),
     ("Product / brand launch", r"\blaunch"),
     ("Regulatory approval", r"approval|usfda|licen[cs]e granted|clearance|eir|establishment inspection"),
     ("Management change", r"resign|appointment|cessation|change in (?:director|kmp|management)|\bceo\b|\bcfo\b"),
     ("Debt / default", r"default|credit rating|downgrade|insolvency|nclt|ibc"),
     ("Litigation / regulatory action", r"litigation|penalty|show cause|sebi order|search|investigation|fraud"),
-    ("Project delay / cancellation", r"delay|postpone|cancel|terminat|withdraw"),
 ]
 ROUTINE = re.compile(r"trading window|loss of share certificate|newspaper (?:publication|advertisement)|"
-                     r"compliance certificate|regulation 74\(5\)|duplicate share|analyst(?:s)? meet intimation",
-                     re.I)
+                     r"compliance certificate|regulation 74\(5\)|duplicate share|depositories and participants|"
+                     r"investor grievance|scores complaints|payment of interest|interest and principal|"
+                     r"regulation 27\(2\)|record date|book closure|copy of (?:newspaper|advertisement)|"
+                     r"transfer of shares to iepf|issue of duplicate", re.I)
+# Labels that help scan the feed but are not timeline categories (an event row needs a real category).
+EXTRA_HINTS = [("Financial results", r"financial results|outcome of board meeting.*result|un-?audited|audited results"),
+               ("Investor meet / presentation", r"investor presentation|analysts?/institutional investor meet|"
+                                                r"con\.? call|earnings call|investor meet")]
+HINT_LABELS = [c for c, _ in RULES] + [c for c, _ in EXTRA_HINTS]
 
 
 def suggest_category(text: str) -> str | None:
@@ -47,7 +58,42 @@ def suggest_category(text: str) -> str | None:
     for cat, pat in RULES:
         if re.search(pat, t, re.I):
             return cat
+    for cat, pat in EXTRA_HINTS:
+        if re.search(pat, t, re.I):
+            return cat
     return None
+
+
+def subject_of(description: str) -> str:
+    """NSE descriptions end with '|SUBJECT: <subject>'; fall back to the description itself."""
+    d = description or ""
+    m = re.search(r"\|\s*SUBJECT:\s*(.+)$", d)
+    return (m.group(1) if m else d).strip()[:200]
+
+
+def _norm_name(n: str) -> str:
+    n = re.sub(r"[^a-z0-9 ]", " ", (n or "").lower())
+    n = re.sub(r"\b(limited|ltd|the)\b", " ", n)
+    return re.sub(r"\s+", " ", n).strip()
+
+
+def enrich(items: pd.DataFrame, listing: pd.DataFrame) -> pd.DataFrame:
+    """Add subject, match symbols by link hint OR exact official company name, and re-label categories."""
+    d = items.copy()
+    if d.empty:
+        return d
+    d["description"] = d.get("description", pd.Series([""] * len(d))).fillna("")
+    d["subject"] = d["description"].map(subject_of)
+    known = set(listing["symbol"]) if not listing.empty else set()
+    by_name = ({}
+               if listing.empty else
+               listing.assign(k=listing["name"].map(_norm_name)).drop_duplicates("k").set_index("k")["symbol"].to_dict())
+    hint = d["symbol_hint"] if "symbol_hint" in d else d.get("symbol", pd.Series([None] * len(d)))
+    sym = hint.where(hint.isin(known))
+    by_title = d["title"].map(lambda t: by_name.get(_norm_name(t)))
+    d["symbol"] = sym.fillna(by_title)
+    d["category_hint"] = (d["subject"] + " " + d["description"]).map(suggest_category)
+    return d
 
 
 def parse_rss(xml_text: str) -> pd.DataFrame:
@@ -81,11 +127,13 @@ def refresh_inbox(con, cfg: dict | None = None, get=requests.get, xml_text: str 
     if items.empty:
         log_fetch(con, "ALL", "announcements", "empty", "no items", url)
         return {"items": 0}
-    known = {r[0] for r in con.execute("SELECT symbol FROM nse_listings")} | \
-            {r[0] for r in con.execute("SELECT symbol FROM universe")}
-    items["symbol"] = items["symbol_hint"].map(lambda s: resolve_symbol(con, s) if s else None)
-    items["symbol"] = items["symbol"].where(items["symbol"].isin(known), None)
-    items["suggested_category"] = (items["title"] + " " + items["description"]).map(suggest_category)
+    lst = pd.read_sql_query("SELECT symbol, name FROM nse_listings UNION SELECT symbol, company AS name "
+                            "FROM universe", con)
+    items["symbol_hint"] = items["symbol_hint"].map(lambda s: resolve_symbol(con, s) if s else None)
+    items = enrich(items, lst)
+    items["symbol"] = items["symbol"].where(items["symbol"].notna(), None)
+    items["suggested_category"] = items["category_hint"]
+    items["title"] = items["title"] + " - " + items["subject"]
     existing = {r[0]: r[1] for r in con.execute("SELECT guid, review_state FROM filings_inbox")}
     out = pd.DataFrame({
         "guid": (items["link"] + "|" + items["title"]).map(lambda s: hashlib.sha1(s.encode()).hexdigest()[:16]),

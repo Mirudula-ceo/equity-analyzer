@@ -8,8 +8,8 @@ import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 
 from common import cached_announcements, cached_news, con, ranking, setup  # noqa: E402
-from equity.research import monitor, news  # noqa: E402
-from equity.research.constants import CATEGORIES  # noqa: E402
+from equity.research import monitor  # noqa: E402
+from equity.research.announcements import HINT_LABELS  # noqa: E402
 
 setup("Latest News")
 st.caption("Official exchange announcements for every NSE company, plus news headlines for the companies you "
@@ -17,7 +17,7 @@ st.caption("Official exchange announcements for every NSE company, plus news hea
 
 src = ranking()
 t = src["table"]
-ann = news.exchange_announcements(cached_announcements())
+ann = cached_announcements()
 
 st.subheader("NSE announcements — all companies")
 if ann.empty:
@@ -26,14 +26,18 @@ if ann.empty:
 else:
     a, b, c3, d = st.columns(4)
     days = a.select_slider("Period", [1, 3, 7, 30, 90, 365], value=7, format_func=lambda x: f"last {x} days")
-    cats = b.multiselect("Category", CATEGORIES)
+    cats = b.multiselect("Category", HINT_LABELS)
     only_top = c3.number_input("Only top-N ranked companies (0 = all)", 0, 5000, 0)
-    hide_routine = d.checkbox("Hide routine filings", value=True)
+    hide_routine = d.checkbox("Hide routine / unclassified filings", value=True)
+    listed_only = d.checkbox("Listed equity companies only", value=True,
+                             help="Hides debt issuers, mutual funds and trusts that also file with NSE")
     x = ann[ann["published"] >= pd.Timestamp.now() - pd.Timedelta(days=days)]
     if cats:
         x = x[x["category_hint"].isin(cats)]
     if hide_routine:
         x = x[x["category_hint"].notna()]
+    if listed_only:
+        x = x[x["symbol"].notna()]
     if only_top and not t.empty:
         topset = set(t[t["rank"].notna()].sort_values("rank").head(int(only_top))["symbol"])
         x = x[x["symbol"].isin(topset)]
@@ -41,7 +45,7 @@ else:
     x = x.assign(rank=x["symbol"].map(rk))
     st.caption(f"{len(x):,} announcements · stored feed covers {ann['published'].min():%d %b %Y} – "
                f"{ann['published'].max():%d %b %Y %H:%M}")
-    st.dataframe(x[["published", "symbol", "rank", "category_hint", "title", "link"]], hide_index=True,
+    st.dataframe(x[["published", "symbol", "rank", "company", "category_hint", "subject", "link"]], hide_index=True,
                  width="stretch", height=480,
                  column_config={"link": st.column_config.LinkColumn("Filing"), "category_hint": "Suggested category",
                                 "rank": st.column_config.NumberColumn("Rank", format="%d")})

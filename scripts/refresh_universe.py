@@ -79,17 +79,18 @@ def cmd_lists(a):
     # announcements: keep a rolling history
     try:
         items = announcements.parse_rss(get(r["announcements_rss_url"]))
-        known = set(listings.read_listings(con)["symbol"])
-        items["symbol"] = items["symbol_hint"].where(items["symbol_hint"].isin(known))
-        items["category_hint"] = (items["title"] + " " + items["description"]).map(announcements.suggest_category)
+        items = announcements.enrich(items, listings.read_listings(con))
         items["retrieved_at"] = now()
         old = snapshot.load_announcements()
+        if not old.empty:                                   # re-match older rows with today's rules
+            old = announcements.enrich(old.drop(columns=["subject"], errors="ignore"), listings.read_listings(con))
         allx = pd.concat([items, old], ignore_index=True).drop_duplicates(["link", "title"])
         allx["published"] = allx["published"].astype(str)
         cut = (pd.Timestamp.now("UTC") - pd.Timedelta(days=r.get("announcement_history_days", 365))).strftime("%Y-%m-%d")
         allx = allx[allx["published"] >= cut].sort_values("published", ascending=False)
         snapshot.SNAP_DIR.mkdir(parents=True, exist_ok=True)
-        allx[["published", "symbol", "title", "description", "link", "category_hint", "retrieved_at"]].to_csv(
+        allx[["published", "symbol", "title", "subject", "description", "link", "category_hint",
+              "retrieved_at"]].to_csv(
             snapshot.path("announcements"), index=False, compression="gzip")
         status["announcements"] = f"ok: {len(items)} new feed items, {len(allx)} kept"
     except Exception as exc:  # noqa: BLE001

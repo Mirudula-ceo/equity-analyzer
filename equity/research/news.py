@@ -18,7 +18,7 @@ import pandas as pd
 import requests
 
 from .announcements import suggest_category
-from .constants import REPORTED
+from .constants import CATEGORIES, REPORTED
 
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
                     "Chrome/124.0 Safari/537.36"}
@@ -76,10 +76,17 @@ def google_news(name: str, symbol: str | None = None, days: int = 30, limit: int
 
 
 def exchange_announcements(snapshot_df: pd.DataFrame, symbol: str | None = None,
-                           aliases: list[str] | None = None) -> pd.DataFrame:
+                           aliases: list[str] | None = None, listing: pd.DataFrame | None = None) -> pd.DataFrame:
     if snapshot_df is None or snapshot_df.empty:
-        return pd.DataFrame(columns=["published", "symbol", "title", "link", "category_hint"])
+        return pd.DataFrame(columns=["published", "symbol", "company", "subject", "title", "link", "category_hint"])
+    from .announcements import enrich
     d = snapshot_df.copy()
+    if listing is not None and not listing.empty:
+        d = enrich(d.drop(columns=["subject"], errors="ignore"), listing)
+    elif "subject" not in d:
+        from .announcements import subject_of
+        d["subject"] = d["description"].fillna("").map(subject_of)
+    d["company"] = d["title"]
     if symbol:
         d = d[d["symbol"].isin(aliases or [symbol])]
     d["published"] = pd.to_datetime(d["published"], errors="coerce")
@@ -95,7 +102,10 @@ def to_event_rows(news: pd.DataFrame, symbol: str) -> pd.DataFrame:
     rows = []
     for r in news.itertuples():
         pub = pd.Timestamp(r.published)
-        rows.append({"symbol": symbol, "title": r.title, "category": getattr(r, "category_hint", None) or "",
+        hint = getattr(r, "category_hint", None)
+        title = getattr(r, "subject", None) if getattr(r, "kind", "") == "Exchange announcement" else r.title
+        rows.append({"symbol": symbol, "title": title if isinstance(title, str) and title else r.title,
+                     "category": hint if hint in CATEGORIES else ("Other material event" if hint else ""),
                      "published_date": "" if pd.isna(pub) else pub.strftime("%Y-%m-%d"),
                      "status": "Announced", "evidence_status": REPORTED, "summary": "",
                      "source_name": getattr(r, "publisher", "") or "NSE", "source_type":
