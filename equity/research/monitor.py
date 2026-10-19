@@ -140,6 +140,21 @@ def _age_days(ts: str | None, today: pd.Timestamp) -> float | None:
     return None if pd.isna(t) else round((today - t).total_seconds() / 86400, 1)
 
 
+def _latest(*ts):
+    v = [t for t in ts if t]
+    return max(v) if v else None
+
+
+def _snapshot_ann_time() -> str | None:
+    """Announcements stored by the GitHub Action (data/snapshot/) count as a refresh too."""
+    from . import snapshot
+    a = snapshot.load_announcements()
+    if a.empty or "retrieved_at" not in a:
+        return None
+    v = a["retrieved_at"].dropna()
+    return str(v.max()) if len(v) else None
+
+
 def freshness(con, symbol: str | None = None, cfg: dict | None = None, today=None) -> pd.DataFrame:
     """Each dataset's last successful update, its refresh limit and a visible OK / Stale / Missing state.
     The last failed attempt (if any) is shown too, so a broken source is never silent."""
@@ -153,8 +168,8 @@ def freshness(con, symbol: str | None = None, cfg: dict | None = None, today=Non
         ("prices", q(f"SELECT MAX(retrieved_at) FROM prices {w}", p), lim["prices"], "prices"),
         ("financial results", q(f"SELECT MAX(retrieved_at) FROM financials {w}", p), lim["financials"], "%annual"),
         ("NSE company list", q("SELECT MAX(retrieved_at) FROM nse_listings"), lim["listings"], "nse_listing"),
-        ("exchange announcements", q("SELECT MAX(retrieved_at) FROM filings_inbox"), lim["announcements"],
-         "announcements"),
+        ("exchange announcements", _latest(q("SELECT MAX(retrieved_at) FROM filings_inbox"), _snapshot_ann_time()),
+         lim["announcements"], "announcements"),
     ]
     out = []
     for name, ts, limit, dataset in rows:
