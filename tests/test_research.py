@@ -366,7 +366,9 @@ def test_alerts_for_watchlist_are_created_once(con, cfg):
     assert monitor.previous_snapshot(con, "ACME", "U", sid)["rank"] == 20
 
 
-def test_freshness_shows_missing_stale_and_failed(con, cfg):
+def test_freshness_shows_missing_stale_and_failed(con, cfg, tmp_path, monkeypatch):
+    from equity.research import snapshot
+    monkeypatch.setattr(snapshot, "SNAP_DIR", tmp_path)              # no stored announcements
     con.execute("INSERT INTO prices (symbol,date,close,source,retrieved_at) VALUES ('ACME','2026-01-01',1,'t',"
                 "'2026-01-01T00:00:00Z')")
     db.log_fetch(con, "ACME", "prices", "error", "HTTP 429", "yahoo")
