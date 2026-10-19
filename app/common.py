@@ -86,8 +86,13 @@ def cached_news(name: str, symbol: str, days: int = 30):
 
 @st.cache_data(show_spinner=False, ttl=3600)
 def cached_announcements():
-    from equity.research import snapshot
-    return snapshot.load_announcements()
+    """Stored NSE announcements, with subject, company symbol (by link or official name) and labels."""
+    from equity.research import listings, news, service, snapshot
+    c = con()
+    service.ensure_lists(c)
+    lst = listings.read_listings(c)
+    c.close()
+    return news.exchange_announcements(snapshot.load_announcements(), listing=lst)
 
 
 @st.cache_data(show_spinner="Reading the company website...", ttl=6 * 3600)

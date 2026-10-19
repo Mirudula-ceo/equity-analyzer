@@ -119,14 +119,15 @@ else:
 
 # ---------------------------------------------------------------- latest developments (timeline + news)
 st.markdown("#### Important developments & latest news")
-ann = news.exchange_announcements(cached_announcements(), sym, aliases)
+_all_ann = cached_announcements()
+ann = _all_ann[_all_ann["symbol"].isin(aliases)] if not _all_ann.empty else _all_ann
 heads, news_err = cached_news(name, sym, 30)
 top = []
 for e in evs.head(3).itertuples():
     top.append(f"- **{e.sort_date}** · timeline · {e.display} *({e.evidence_status})*")
 for a in ann.head(3).itertuples():
     top.append(f"- **{pd.Timestamp(a.published).date() if pd.notna(a.published) else ''}** · NSE filing · "
-               f"[{a.title}]({a.link})")
+               f"[{a.subject}]({a.link})" + (f" · *{a.category_hint}*" if isinstance(a.category_hint, str) else ""))
 for h in heads.head(4).itertuples():
     top.append(f"- **{pd.Timestamp(h.published).date()}** · {h.publisher} · [{h.title}]({h.link}) *(reported)*")
 st.markdown("\n".join(top) if top else "Nothing found in the last 30 days." + (f" ({news_err})" if news_err else ""))
@@ -238,7 +239,7 @@ with tabs[5]:
                    "Actions and keeps a rolling history.")
     else:
         a2 = ann[ann["published"] >= pd.Timestamp.now() - pd.Timedelta(days=days)] if days < 365 else ann
-        st.dataframe(a2[["published", "category_hint", "title", "link"]], hide_index=True, width="stretch",
+        st.dataframe(a2[["published", "category_hint", "subject", "link"]], hide_index=True, width="stretch",
                      column_config={"link": st.column_config.LinkColumn("Filing"),
                                     "category_hint": "Suggested category"})
     st.markdown(f"**News headlines** — search for “{news.short_name(name)}” (Google News)")
