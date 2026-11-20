@@ -1,14 +1,14 @@
 {
- "generated_at": "2026-11-13T22:42:17Z",
- "companies_expected": 2635,
- "companies_scored": 2635,
- "companies_ranked": 2281,
+ "generated_at": "2026-11-20T22:44:06Z",
+ "companies_expected": 2631,
+ "companies_scored": 2631,
+ "companies_ranked": 2276,
  "lists": {
   "MAINBOARD": "ok",
   "SME": "ok",
   "ETF": "ok",
   "SYMBOL_CHANGES": "ok",
-  "announcements": "ok: 22 new feed items, 1159 kept"
+  "announcements": "ok: 3 new feed items, 1579 kept"
  },
  "price_history_years": 2,
  "note": "Scores from the unchanged 27-metric engine on Yahoo Finance data; annual statements only; see docs/COMPANY_RESEARCH_MODULE.md"
